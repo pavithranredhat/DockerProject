@@ -5,5 +5,6 @@ FROM ubuntu
 RUN apt-get update -y
 
 # this is install figlet from internet 
-RUN apt-get install figlet
-
+#RUN apt-get install figlet
+RUN ["apt-get", "install", "figlet"]
+RUN apt-get install cowsay 
