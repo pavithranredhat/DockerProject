@@ -1,0 +1,47 @@
+
+trigger:
+  - main
+
+pool:
+  vmImage: ubuntu-latest  # Or your preferred agent image
+
+variables:
+  # Replace with your organization's ACR login server
+  orgAcrLoginServer: '<org-acr-login-server>.azurecr.io'
+  # Replace with the image name in the organization's ACR
+  orgImageName: acrpull01
+  # Replace with your ACR login server
+  acrLoginServer: '<your-acr-login-server>.azurecr.io'
+  # Replace with the desired image name in your ACR (can be the same)
+  acrImageName: acrpull01
+  # Replace with a service connection name that has access to both ACRs
+  acrServiceConnection: 'ACR-Pull-Push-Connection'
+
+steps:
+  - name: Login to organization's ACR
+    useTask: AzureRm ACR Login@1  # Update task version if needed
+    with:
+      loginServer: $(orgAcrLoginServer)
+      name: $(acrServiceConnection)
+
+  - name: Pull image from organization's ACR
+    task: Docker@0  # Update task version if needed
+    displayName: "Pull $(orgAcrLoginServer)/$(orgImageName)"
+    with:
+      registry: $(orgAcrLoginServer)
+      image: $(orgImageName)
+      imageName: $(acrImageName)  # Optional: Tag the pulled image with the desired name
+
+  - name: Login to your ACR
+    useTask: AzureRm ACR Login@1  # Update task version if needed
+    with:
+      loginServer: $(acrLoginServer)
+      name: $(acrServiceConnection)
+
+  - name: Push image to your ACR
+    task: Docker@0  # Update task version if needed
+    displayName: "Push $(acrImageName) to $(acrLoginServer)"
+    with:
+      registry: $(acrLoginServer)
+      imageName: $(acrImageName)
+      buildContext: $(Build.SourcesDirectory)  # Replace with path if building from Dockerfile

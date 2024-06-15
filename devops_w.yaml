@@ -1,0 +1,54 @@
+# Trigger the pipeline on changes to the main branch
+trigger:
+  - main
+
+# Use a Windows agent pool (adjust if using Linux)
+pool:
+  vmImage: windows-latest  # Or a specific Windows version
+
+variables:
+  # Replace with your organization's ACR login server (e.g., myorg.azurecr.io)
+  orgAcrLoginServer: '<org-acr-login-server>.azurecr.io'
+  # Replace with the image name in the organization's ACR
+  orgImageName: acrpull01
+  # Replace with your ACR login server (e.g., myacr.azurecr.io)
+  acrLoginServer: '<your-acr-login-server>.azurecr.io'
+  # Replace with the desired image name in your ACR (can be the same)
+  acrImageName: acrpull01
+  # Replace with a service connection name with access to both ACRs
+  acrServiceConnection: 'ACR-Pull-Push-Connection'
+
+steps:
+  - name: Login to organization's ACR
+    # Use the service connection for authentication within the task
+    useTask: AzureRm ACR Login@1  # Update task version if needed
+    with:
+      loginServer: $(orgAcrLoginServer)
+      name: $(acrServiceConnection)
+    displayName: "Login to $(orgAcrLoginServer)"  # Clearer step name
+
+  - name: Pull image from organization's ACR
+    task: Docker@0  # Update task version if needed
+    displayName: "Pull $(orgAcrLoginServer)/$(orgImageName)"
+    with:
+      registry: $(orgAcrLoginServer)
+      image: $(orgImageName)
+      imageName: $(acrImageName)  # Optional: Tag the pulled image
+
+  - name: Login to your ACR
+    # Use the service connection for authentication within the task
+    useTask: AzureRm ACR Login@1  # Update task version if needed
+    with:
+      loginServer: $(acrLoginServer)
+      name: $(acrServiceConnection)
+    displayName: "Login to $(acrLoginServer)"  # Clearer step name
+
+  - name: Push image to your ACR (if building a Windows image)
+    # Conditional step for building Windows images
+    condition: always()  # Always run, modify if not building Windows images
+    task: Docker@0  # Update task version if needed
+    displayName: "Push $(acrImageName) to $(acrLoginServer)"
+    with:
+      registry: $(acrLoginServer)
+      imageName: $(acrImageName)
+      buildContext: $(Build.SourcesDirectory)  # Adjust path if 
